@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Babylon.js sample code</title>
+
+    <!-- Babylon.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+    <script src="https://preview.babylonjs.com/ammo.js"></script>
+    <script src="https://preview.babylonjs.com/cannon.js"></script>
+    <script src="https://preview.babylonjs.com/Oimo.js"></script>
+    <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #customLoadingScreenDiv {
+            background-color: #BB464Bcc;
+            color: white;
+            font-size: 50px;
+            text-align: center;
+        }
+
+        #customLoadingScreenDiv p {
+            background-color: #BB464Bcc;
+            color: white;
+            font-size: 50px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="texture-popup" style="display:none;">
+        <!-- texture icons will be added here -->
+    </div>
+    <div id='customLoadingScreenDiv'>scene is currently loading...<span id="div0"><span></div>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        BABYLON.DefaultLoadingScreen.prototype.displayLoadingUI = function () {
+            this._resizeLoadingUI();
+            window.addEventListener("resize", this._resizeLoadingUI);
+        };
+
+        BABYLON.DefaultLoadingScreen.prototype.hideLoadingUI = function () {
+            document.getElementById("customLoadingScreenDiv").style.display = "none";
+            console.log("scene is now loaded");
+            document.getElementById("customLoadingScreenDiv").outerHTML = "";
+        }
+
+
+        var canvas = document.getElementById("renderCanvas");
+
+        var startRenderLoop = function (engine, canvas) {
+            engine.runRenderLoop(function () {
+                if (sceneToRender && sceneToRender.activeCamera) {
+                    sceneToRender.render();
+                }
+            });
+        }
+
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
+        var createScene = function () {
+            var scene = new BABYLON.Scene(engine);
+
+            //Adding a light
+            var lightP = new BABYLON.PointLight("Omni", new BABYLON.Vector3(-50, 100, -200), scene);
+            lightP.intensity = 40;
+
+            //Adding an Arc Rotate Camera
+            var camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 2, BABYLON.Vector3(0, 1.85, -2.5), scene);
+            camera.attachControl(canvas, false);
+
+            // The first parameter can be used to specify which mesh to import. Here we import all meshes
+            BABYLON.SceneLoader.ImportMesh(null, "", "dec21N.glb", scene,
+                function (newMeshes) {
+                    camera.radius = 0.3;
+                    camera.target = new BABYLON.Vector3(0, 1.5, -2.5);
+                    camera.alpha = -3.6437;//-Math.PI/2;
+                    camera.beta = 1.9197;//0.01;
+
+                    engine.hideLoadingUI();
+                    //scene.debugLayer.show();
+
+                    // Create a popup with texture icons
+                    var popup = document.createElement("div");
+                    popup.style.position = "absolute";
+                    popup.style.top = "50px";
+                    popup.style.left = "50px";
+                    popup.style.width = "200px";
+                    popup.style.height = "200px";
+                    popup.style.border = "1px solid #ccc";
+                    popup.style.background = "#fff";
+                    popup.style.display = "none";
+                    document.body.appendChild(popup);
+
+                    var textures = [
+                        "textures/Water_Sp.jpg",
+                        "textures/Asphal01.jpg",
+                        "textures/Grass_01.jpg"
+                    ];
+
+                    for (var i = 0; i < textures.length; i++) {
+                        (function (texture) {
+                            var textureObject = new BABYLON.Texture(texture, scene);
+                            var icon = document.createElement("img");
+                            icon.src = textureObject.url;
+                            icon.style.width = "50px";
+                            icon.style.height = "50px";
+                            icon.style.margin = "5px";
+                            icon.addEventListener("click", function () {
+                                if (selectedMesh.material) {
+                                    console.log(selectedMesh.name + " assign texture " + textureObject.url);
+                                    selectedMesh.material.diffuseTexture = textureObject;
+                                }
+                                popup.style.display = "none";
+                            });
+                            popup.appendChild(icon);
+                        })(textures[i]);
+                    }
+
+                    // Set the material of the selected mesh to a new texture
+                    var selectedMesh;
+                    scene.onPointerDown = function (evt, pickResult) {
+                        if (pickResult.hit) {
+                            selectedMesh = pickResult.pickedMesh;
+                            console.log(selectedMesh);
+                            console.log(selectedMesh.name);
+                            if (!selectedMesh.material) {
+                                selectedMesh.material = new BABYLON.StandardMaterial("material", scene);
+                            }
+                            popup.style.display = "block";
+                            popup.style.left = evt.clientX + "px";
+                            popup.style.top = evt.clientY + "px";
+                        } else {
+                            popup.style.display = "none";
+                        }
+                    };
+                }
+                ,
+                function (evt) {
+                    // alert("ali");
+                    // onProgress
+                    var loadedPercent = 0;
+                    if (evt.lengthComputable) {
+                        loadedPercent = (evt.loaded * 100 / evt.total).toFixed();
+                    } else {
+                        var dlCount = evt.loaded / (1024 * 1024);
+                        loadedPercent = Math.floor(dlCount * 100.0) / 100.0;
+                    }
+                    // assuming "loadingScreenPercent" is an existing html element
+                    document.getElementById('div0').innerHTML = (loadedPercent + '%');
+                    // console.log("scene is now loaded: %"+loadedPercent);
+                }
+
+            );
+
+            // Move the light with the camera
+            scene.registerBeforeRender(function () {
+                //scene.debugLayer.show();
+
+                lightP.position = camera.position;
+            });
+
+            return scene;
+        }
+        window.initFunction = async function () {
+
+
+            var asyncEngineCreation = async function () {
+                try {
+                    return createDefaultEngine();
+                } catch (e) {
+                    console.log("the available createEngine function failed. Creating the default engine instead");
+                    return createDefaultEngine();
+                }
+            }
+
+            window.engine = await asyncEngineCreation();
+            if (!engine) throw 'engine should not be null.';
+            startRenderLoop(engine, canvas);
+            window.scene = createScene();
+        };
+        initFunction().then(() => {
+            sceneToRender = scene
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
+
+</html>
