@@ -139,9 +139,10 @@
 							icon.addEventListener("click", function () {
 								if (selectedMesh.material) {
 									// Create selected texture
-									textureObject = new BABYLON.Texture(texture, scene);
+									var newTextureObject = new BABYLON.Texture(texture, scene);
 									console.log(selectedMesh.name + " assign texture " + textureObject.url);
-									selectedMesh.material.diffuseTexture = textureObject;
+									selectedMesh.material.diffuseTexture = newTextureObject;
+
 								}
 								popup.style.display = "none";
 							});
@@ -172,7 +173,7 @@
 									// Assign the texture to the existing material
 									selectedMesh.material.diffuseTexture = textureObject;
 								}
-								console.log(selectedMesh.name + " assign texture " + textureObject.url);
+								console.log(selectedMesh.name + " assign texture " + textureObject?.url);
 								popup.style.display = "none";
 							} else {
 								// Create a new material and assign the texture to it
